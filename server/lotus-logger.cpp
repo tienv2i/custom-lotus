@@ -16,7 +16,7 @@ LotusLogger& LotusLogger::instance() {
 
 LotusLogger::LotusLogger(LogLevel level) {
     level_.store(level);
-    openlog("fcitx5-lotus-server", LOG_PID, LOG_DAEMON);
+    openlog("lotus-vibe-server", LOG_PID, LOG_DAEMON);
 }
 
 LotusLogger::~LotusLogger() {

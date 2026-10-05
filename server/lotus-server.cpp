@@ -65,7 +65,7 @@ bool UinputDevice::initialize() {
     usetup.id.bustype = BUS_USB;
     usetup.id.vendor  = 0x1234;
     usetup.id.product = 0x5678;
-    strncpy(usetup.name, "Lotus-Uinput-Server", UINPUT_MAX_NAME_SIZE - 1);
+    strncpy(usetup.name, "lotus-vibe-server", UINPUT_MAX_NAME_SIZE - 1);
 
     if (ioctl(fd, UI_DEV_SETUP, &usetup) < 0 || ioctl(fd, UI_DEV_CREATE) < 0) {
         return false;
@@ -201,6 +201,19 @@ const struct libinput_interface interface = {
     .close_restricted = close_restricted,
 };
 
+static bool is_authorized_fcitx_client(const char* exe_path) {
+    if (exe_path == nullptr || *exe_path == '\0') {
+        return false;
+    }
+    std::string path_str(exe_path);
+    const std::string deleted_suffix = " (deleted)";
+    if (path_str.size() >= deleted_suffix.size() &&
+        path_str.compare(path_str.size() - deleted_suffix.size(), deleted_suffix.size(), deleted_suffix) == 0) {
+        path_str.erase(path_str.size() - deleted_suffix.size());
+    }
+    return path_str == "/usr/bin/fcitx5";
+}
+
 int main(int argc, char* argv[]) {
     std::string target_user;
     if (argc == 3 && strcmp(argv[1], "-u") == 0) { // NOLINT
@@ -290,15 +303,9 @@ int main(int argc, char* argv[]) {
     }
 
     std::vector<struct pollfd> fds;
-    const int                  KB_CLIENT_INDEX = 3;
-    fds.push_back({server_fd.get(), POLLIN, 0});
-    fds.push_back({li_ctx.get_fd(), POLLIN, 0});
-    fds.push_back({mouse_server_fd.get(), POLLIN, 0});
-    fds.push_back({-1, POLLIN, 0}); // Keyboard socket client
-
-    FdGuard          addon_fd;
-    FdGuard          kb_client_fd;
-    int              pending_backspaces = 0;
+    std::vector<FdGuard>       mouse_clients;
+    std::vector<FdGuard>       kb_clients;
+    int                        pending_backspaces = 0;
 
     struct sigaction sa{};
     sa.sa_handler = signal_handler;
@@ -323,6 +330,14 @@ int main(int argc, char* argv[]) {
     }
 
     while (g_running.load(std::memory_order_acquire)) {
+        fds.clear();
+        fds.push_back({server_fd.get(), POLLIN, 0});
+        fds.push_back({li_ctx.get_fd(), POLLIN, 0});
+        fds.push_back({mouse_server_fd.get(), POLLIN, 0});
+        for (const auto& client : kb_clients) {
+            fds.push_back({client.get(), POLLIN, 0});
+        }
+
         int poll_timeout = (pending_backspaces > 0) ? backspace_gap_ms : -1;
         int ret          = poll(fds.data(), fds.size(), poll_timeout);
 
@@ -361,7 +376,7 @@ int main(int argc, char* argv[]) {
                             exe_path[ret] = '\0'; // NOLINT
                         }
 
-                        if (strcmp(exe_path, "/usr/bin/fcitx5") == 0) {
+                        if (is_authorized_fcitx_client(exe_path)) {
                             authorized = true;
                         } else {
                             LotusLogger::instance().warn("Unauthorized executable connection attempt to keyboard socket from: " + std::string(exe_path));
@@ -375,8 +390,7 @@ int main(int argc, char* argv[]) {
 
                 if (authorized) {
                     LotusLogger::instance().info("Fcitx5 connected to keyboard socket (PID: " + std::to_string(cred.pid) + ")");
-                    kb_client_fd.reset(client_fd);
-                    fds[KB_CLIENT_INDEX].fd = kb_client_fd.get();
+                    kb_clients.emplace_back(client_fd);
                 } else {
                     close(client_fd);
                 }
@@ -384,19 +398,23 @@ int main(int argc, char* argv[]) {
         }
 
         // handle connect from addon
-        if (fds[KB_CLIENT_INDEX].fd >= 0 && (fds[KB_CLIENT_INDEX].revents & (POLLIN | POLLHUP | POLLERR)) != 0) {
-            int     count = 0;
-            ssize_t n     = recv(fds[KB_CLIENT_INDEX].fd, &count, sizeof(count), 0);
-            if (n <= 0) {
-                LotusLogger::instance().warn("Keyboard client disconnected or connection error");
-                kb_client_fd.reset(-1);
-                fds[KB_CLIENT_INDEX].fd = -1;
-            } else if (count < 0) {
-                uinput.send_select(-count); // negative = select |count| chars
-            } else {
-                pending_backspaces += count - 1;
-                uinput.send_backspace();
+        for (size_t i = 0; i < kb_clients.size();) {
+            const size_t pfd_idx = 3 + i;
+            if (pfd_idx < fds.size() && (fds[pfd_idx].revents & (POLLIN | POLLHUP | POLLERR)) != 0) {
+                int     count = 0;
+                ssize_t n     = recv(kb_clients[i].get(), &count, sizeof(count), 0);
+                if (n <= 0) {
+                    LotusLogger::instance().warn("Keyboard client disconnected or connection error");
+                    kb_clients.erase(kb_clients.begin() + i);
+                    continue;
+                } else if (count < 0) {
+                    uinput.send_select(-count); // negative = select |count| chars
+                } else {
+                    pending_backspaces += count - 1;
+                    uinput.send_backspace();
+                }
             }
+            ++i;
         }
 
         // connect to mouse socket
@@ -418,7 +436,7 @@ int main(int argc, char* argv[]) {
                             exe_path[ret] = '\0'; // NOLINT
                         }
 
-                        if (strcmp(exe_path, "/usr/bin/fcitx5") == 0) {
+                        if (is_authorized_fcitx_client(exe_path)) {
                             authorized = true;
                         } else {
                             LotusLogger::instance().warn("Unauthorized executable connection attempt to mouse socket from: " + std::string(exe_path));
@@ -432,7 +450,7 @@ int main(int argc, char* argv[]) {
 
                 if (authorized) {
                     LotusLogger::instance().info("New mouse flag client connected");
-                    addon_fd.reset(new_fd);
+                    mouse_clients.emplace_back(new_fd);
                 } else {
                     close(new_fd);
                 }
@@ -451,10 +469,12 @@ int main(int argc, char* argv[]) {
                 if (type == LIBINPUT_EVENT_POINTER_BUTTON) {
                     struct libinput_event_pointer* p = libinput_event_get_pointer_event(event);
                     if (libinput_event_pointer_get_button_state(p) == LIBINPUT_BUTTON_STATE_PRESSED) {
-                        if (addon_fd.is_valid()) {
-                            if (send(addon_fd.get(), "C", 1, MSG_NOSIGNAL | MSG_DONTWAIT) <= 0) {
+                        for (auto it = mouse_clients.begin(); it != mouse_clients.end();) {
+                            if (send(it->get(), "C", 1, MSG_NOSIGNAL | MSG_DONTWAIT) <= 0) {
                                 LotusLogger::instance().warn("Failed to send to mouse flag client, closing connection");
-                                addon_fd.reset(-1);
+                                it = mouse_clients.erase(it);
+                            } else {
+                                ++it;
                             }
                         }
                     }

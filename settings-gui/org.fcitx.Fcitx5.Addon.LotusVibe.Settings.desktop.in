@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Fcitx5 Lotus Vibe Settings
+Comment=Configure Fcitx5 Lotus Vibe Input Method
+Exec=fcitx5-lotus-vibe-settings
+Icon=fcitx-lotus-vibe
+StartupWMClass=org.fcitx.Fcitx5.Addon.LotusVibe.Settings
+Terminal=false
+Type=Application
+Categories=Settings;DesktopSettings;

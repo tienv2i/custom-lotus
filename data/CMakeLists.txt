@@ -17,6 +17,13 @@ foreach(ICON ${LOTUS_STATUS_ICONS})
     install(FILES icons/hicolor/scalable/apps/${ICON}.svg
         DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/status"
         RENAME "${ICON}.svg")
+    string(REPLACE "fcitx-lotus" "fcitx-lotus-vibe" VIBE_ICON "${ICON}")
+    install(FILES icons/hicolor/scalable/apps/${ICON}.svg
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/status"
+        RENAME "${VIBE_ICON}.svg")
+    install(FILES icons/hicolor/scalable/apps/${ICON}.svg
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps"
+        RENAME "${VIBE_ICON}.svg")
 endforeach()
 
 # PNG tray icons: 22/24px status PNGs per icon (build-time, rsvg-convert).
@@ -37,10 +44,14 @@ foreach(ICON ${LOTUS_STATUS_ICONS})
             COMMENT "Generating ${SIZE}x${SIZE} status icon for ${ICON}")
         install(FILES ${OUT}
             DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/${SIZE}x${SIZE}/status")
+        string(REPLACE "fcitx-lotus" "fcitx-lotus-vibe" VIBE_ICON "${ICON}")
+        install(FILES ${OUT}
+            DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/${SIZE}x${SIZE}/status"
+            RENAME "${VIBE_ICON}.png")
         list(APPEND LOTUS_PNG_OUTPUTS ${OUT})
     endforeach()
 endforeach()
 
 add_custom_target(lotus_icons ALL DEPENDS ${LOTUS_PNG_OUTPUTS})
 
-install(FILES dictionaries/vietnamese.cm.dict DESTINATION "${FCITX_INSTALL_PKGDATADIR}/lotus")
+install(FILES dictionaries/vietnamese.cm.dict DESTINATION "${FCITX_INSTALL_PKGDATADIR}/lotus-vibe")

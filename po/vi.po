@@ -311,6 +311,14 @@ msgstr "Lotus - Tắt"
 msgid "Page "
 msgstr "Trang "
 
+#: org.fcitx.Fcitx5.Addon.LotusVibe.metainfo.xml.in.in:7
+msgid "lotus-vibe"
+msgstr "lotus-vibe"
+
+#: org.fcitx.Fcitx5.Addon.LotusVibe.metainfo.xml.in.in:8
+msgid "Vietnamese input method (Lotus Vibe)"
+msgstr "Bộ gõ tiếng Việt (Lotus Vibe)"
+
 #: org.fcitx.Fcitx5.Addon.Lotus.metainfo.xml.in.in:7
 msgid "Lotus"
 msgstr "Lotus"
@@ -327,6 +335,18 @@ msgstr "Lotus là bộ gõ tiếng Việt cho Fcitx5, hỗ trợ nhiều chế �
 
 msgid "Lotus Wrapper For Fcitx"
 msgstr "Bộ gõ Lotus cho Fcitx"
+
+msgid "Lotus Vibe Wrapper For Fcitx"
+msgstr "Bộ gõ Lotus Vibe cho Fcitx"
+
+msgid "lotus-vibe - Off"
+msgstr "lotus-vibe - Tắt"
+
+msgid "Fcitx5 Lotus Vibe Settings"
+msgstr "Cài đặt Fcitx5 Lotus Vibe"
+
+msgid "Configure Fcitx5 Lotus Vibe Input Method"
+msgstr "Tuỳ chỉnh bộ gõ Fcitx5 Lotus Vibe"
 
 #: settings-gui/ui/pages/about.py:75
 #, python-brace-format

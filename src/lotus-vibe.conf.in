@@ -1,0 +1,6 @@
+[InputMethod]
+Name=lotus-vibe
+Icon=fcitx-lotus-vibe
+LangCode=vi
+Addon=lotus-vibe
+Configurable=True

@@ -38,9 +38,9 @@
 #include <sstream>
 
 namespace fcitx {
-    constexpr const char* CharsetActionPrefix = "lotus-charset-";
-    const std::string     CustomKeymapFile    = "conf/lotus-custom-keymap.conf";
-    const std::string     MacroTableFile      = "conf/lotus-macro-table.conf";
+    constexpr const char* CharsetActionPrefix = "lotus-vibe-charset-";
+    const std::string     CustomKeymapFile    = "conf/lotus-vibe-custom-keymap.conf";
+    const std::string     MacroTableFile      = "conf/lotus-vibe-macro-table.conf";
 
     int                   modeToInt(LotusMode mode) {
         switch (mode) {
@@ -266,7 +266,7 @@ namespace fcitx {
         charsetAction_ = std::make_unique<SimpleAction>();
         charsetAction_->setShortText(_("Charset"));
         charsetAction_->setIcon("character-set");
-        uiManager.registerAction("lotus-charset", charsetAction_.get());
+        uiManager.registerAction("lotus-vibe-charset", charsetAction_.get());
         charsetMenu_ = std::make_unique<Menu>();
         charsetAction_->setMenu(charsetMenu_.get());
 
@@ -291,20 +291,20 @@ namespace fcitx {
         }
         config_.outputCharset.annotation().setList(charsets);
 
-        initToggleAction(spellCheckAction_, config_.spellCheck, "lotus-spellcheck", "tools-check-spelling", _("Spell Check"), _("Spell Check"), uiManager);
-        initToggleAction(macroAction_, config_.enableMacro, "lotus-macro", "document-edit", _("Macro"), _("Macro"), uiManager);
-        initToggleAction(capitalizeMacroAction_, config_.capitalizeMacro, "lotus-capitalizemacro", "format-text-uppercase", _("Capitalize Macro"), _("Capitalize Macro"),
+        initToggleAction(spellCheckAction_, config_.spellCheck, "lotus-vibe-spellcheck", "tools-check-spelling", _("Spell Check"), _("Spell Check"), uiManager);
+        initToggleAction(macroAction_, config_.enableMacro, "lotus-vibe-macro", "document-edit", _("Macro"), _("Macro"), uiManager);
+        initToggleAction(capitalizeMacroAction_, config_.capitalizeMacro, "lotus-vibe-capitalizemacro", "format-text-uppercase", _("Capitalize Macro"), _("Capitalize Macro"),
                          uiManager);
-        initToggleAction(autoNonVnRestoreAction_, config_.autoNonVnRestore, "lotus-autonvnrestore", "edit-undo", _("Auto Restore Invalid Words"), _("Auto Non-VN Restore"),
+        initToggleAction(autoNonVnRestoreAction_, config_.autoNonVnRestore, "lotus-vibe-autonvnrestore", "edit-undo", _("Auto Restore Invalid Words"), _("Auto Non-VN Restore"),
                          uiManager);
-        initToggleAction(enableDictionaryAction_, config_.enableDictionary, "lotus-dictionary", "accessories-dictionary", _("Custom Dictionary"), _("Custom Dictionary"),
+        initToggleAction(enableDictionaryAction_, config_.enableDictionary, "lotus-vibe-dictionary", "accessories-dictionary", _("Custom Dictionary"), _("Custom Dictionary"),
                          uiManager);
 
         settingsAction_ = std::make_unique<SimpleAction>();
         settingsAction_->setShortText(_("Settings"));
         settingsAction_->setIcon("configure");
         connections_.emplace_back(settingsAction_->connect<SimpleAction::Activated>([](InputContext*) { startProcess({FCITX5_LOTUS_SETTINGS_PATH}); }));
-        uiManager.registerAction("lotus-settings", settingsAction_.get());
+        uiManager.registerAction("lotus-vibe-settings", settingsAction_.get());
 
 #if LOTUS_USE_MODERN_FCITX_API
         std::string configDir = (StandardPaths::global().userDirectory(StandardPathsType::Config) / "fcitx5" / "conf").string();
@@ -317,8 +317,8 @@ namespace fcitx {
         }
         reloadConfig();
         realMode = config_.mode.value();
-        instance_->inputContextManager().registerProperty("LotusState", &factory_);
-        appRulesPath_ = configDir + "/lotus-app-rules.conf";
+        instance_->inputContextManager().registerProperty("LotusVibeState", &factory_);
+        appRulesPath_ = configDir + "/lotus-vibe-app-rules.conf";
         loadAppRules();
         toggleActions_ = {charsetAction_.get(),          spellCheckAction_.get(),       macroAction_.get(),   capitalizeMacroAction_.get(),
                           autoNonVnRestoreAction_.get(), enableDictionaryAction_.get(), settingsAction_.get()};
@@ -371,7 +371,16 @@ namespace fcitx {
 
     void LotusEngine::reloadConfig() {
         RawConfig raw;
-        readAsIni(raw, "conf/lotus.conf");
+#if LOTUS_USE_MODERN_FCITX_API
+        const std::string vibeConf = (StandardPaths::global().userDirectory(StandardPathsType::Config) / "fcitx5" / "conf" / "lotus-vibe.conf").string();
+#else
+        const std::string vibeConf = StandardPath::global().userDirectory(StandardPath::Type::Config) + "/fcitx5/conf/lotus-vibe.conf";
+#endif
+        if (std::filesystem::exists(vibeConf)) {
+            readAsIni(raw, "conf/lotus-vibe.conf");
+        } else {
+            readAsIni(raw, "conf/lotus.conf");
+        }
         migrateLegacyMode(raw);
         config_.load(raw);
         readAsIni(customKeymap_, CustomKeymapFile);
@@ -379,18 +388,30 @@ namespace fcitx {
         macroTableObject_.reset(newMacroTable(macroTables_));
         if (config_.enableDictionary.value()) {
 #if LOTUS_USE_MODERN_FCITX_API
-            auto fd = StandardPaths::global().open(StandardPathsType::PkgData, "lotus/vietnamese.cm.dict");
+            auto fd = StandardPaths::global().open(StandardPathsType::PkgData, "lotus-vibe/vietnamese.cm.dict");
+            if (!fd.isValid()) {
+                fd = StandardPaths::global().open(StandardPathsType::PkgData, "lotus/vietnamese.cm.dict");
+            }
 #else
-            auto fd = StandardPath::global().open(StandardPath::Type::PkgData, "lotus/vietnamese.cm.dict", O_RDONLY);
+            auto fd = StandardPath::global().open(StandardPath::Type::PkgData, "lotus-vibe/vietnamese.cm.dict", O_RDONLY);
+            if (!fd.isValid()) {
+                fd = StandardPath::global().open(StandardPath::Type::PkgData, "lotus/vietnamese.cm.dict", O_RDONLY);
+            }
 #endif
             if (fd.isValid()) {
                 dictionary_.reset(NewDictionary(fd.release()));
             }
         } else {
 #if LOTUS_USE_MODERN_FCITX_API
-            auto paths = StandardPaths::global().locateAll(StandardPathsType::PkgData, "lotus/vietnamese.cm.dict");
+            auto paths = StandardPaths::global().locateAll(StandardPathsType::PkgData, "lotus-vibe/vietnamese.cm.dict");
+            if (paths.empty()) {
+                paths = StandardPaths::global().locateAll(StandardPathsType::PkgData, "lotus/vietnamese.cm.dict");
+            }
 #else
-            auto paths = StandardPath::global().locateAll(StandardPath::Type::PkgData, "lotus/vietnamese.cm.dict");
+            auto paths = StandardPath::global().locateAll(StandardPath::Type::PkgData, "lotus-vibe/vietnamese.cm.dict");
+            if (paths.empty()) {
+                paths = StandardPath::global().locateAll(StandardPath::Type::PkgData, "lotus/vietnamese.cm.dict");
+            }
 #endif
             for (const auto& p : paths) {
 #if LOTUS_USE_MODERN_FCITX_API
@@ -416,7 +437,7 @@ namespace fcitx {
     const Configuration* LotusEngine::getSubConfig(const std::string& path) const {
         if (path == "custom_keymap")
             return &customKeymap_;
-        if (path == "lotus-macro") {
+        if (path == "lotus-macro" || path == "lotus-vibe-macro") {
             return &macroTables_;
         }
         if (path == "app_rules") {
@@ -449,7 +470,7 @@ namespace fcitx {
             customKeymap_.load(config, true);
             safeSaveAsIni(customKeymap_, CustomKeymapFile);
             refreshEngine();
-        } else if (path == "lotus-macro") {
+        } else if (path == "lotus-macro" || path == "lotus-vibe-macro") {
             macroTables_.load(config, true);
             safeSaveAsIni(macroTables_, MacroTableFile);
             macroTableObject_.reset(newMacroTable(macroTables_));
@@ -900,7 +921,16 @@ namespace fcitx {
                 appRules_[app] = mode;
             }
         };
-        loadFromFile(appRulesPath_);
+        if (std::filesystem::exists(appRulesPath_)) {
+            loadFromFile(appRulesPath_);
+        } else {
+            std::string legacyPath = appRulesPath_;
+            auto pos = legacyPath.rfind("lotus-vibe-app-rules.conf");
+            if (pos != std::string::npos) {
+                legacyPath.replace(pos, 25, "lotus-app-rules.conf");
+                loadFromFile(legacyPath);
+            }
+        }
 
         std::lock_guard<std::mutex> lock(appRulesMutex_);
         std::vector<lotusAppRule>   rules;
@@ -1186,9 +1216,9 @@ namespace fcitx {
     std::string LotusEngine::subModeIconImpl(const InputMethodEntry& /*entry*/, InputContext& /*inputContext*/) {
         std::string baseIconName;
         switch (realMode) {
-            case LotusMode::Off: baseIconName = "fcitx-lotus-off"; break;
-            case LotusMode::Emoji: baseIconName = "fcitx-lotus-emoji"; break;
-            default: baseIconName = "fcitx-lotus"; break;
+            case LotusMode::Off: baseIconName = "fcitx-lotus-vibe-off"; break;
+            case LotusMode::Emoji: baseIconName = "fcitx-lotus-vibe-emoji"; break;
+            default: baseIconName = "fcitx-lotus-vibe"; break;
         }
 
         std::string iconName;
@@ -1240,13 +1270,21 @@ namespace fcitx {
                              "/usr/share/icons/hicolor/24x24/status"};
         paths.fallbackDir = FCITX_LOTUS_ICON_DIR; // compile-time install dir
 
-        iconCachePath_ = resolveLotusIconPath({iconName, baseIconName}, paths);
+        std::string legacyIconName = iconName;
+        if (isStartsWith(legacyIconName, "fcitx-lotus-vibe")) {
+            legacyIconName.replace(0, 16, "fcitx-lotus");
+        }
+        std::string legacyBaseIconName = baseIconName;
+        if (isStartsWith(legacyBaseIconName, "fcitx-lotus-vibe")) {
+            legacyBaseIconName.replace(0, 16, "fcitx-lotus");
+        }
+        iconCachePath_ = resolveLotusIconPath({iconName, baseIconName, legacyIconName, legacyBaseIconName}, paths);
         return iconCachePath_;
     }
 
     std::string LotusEngine::subModeLabelImpl(const InputMethodEntry& /*entry*/, InputContext& /*inputContext*/) {
         switch (realMode) {
-            case LotusMode::Off: return _("Lotus - Off");
+            case LotusMode::Off: return _("lotus-vibe - Off");
             case LotusMode::Emoji: return "😄";
             default: return isGnome_ ? "vi" : "🪷";
         }

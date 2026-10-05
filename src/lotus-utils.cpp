@@ -51,7 +51,7 @@ std::string buildSocketPath(const char* base_path_suffix) {
     path += '-';
     path += base_path_suffix;
     // Optional namespace so a test can own a private socket name instead of
-    // fighting the running fcitx5-lotus-server for the well-known one.
+    // fighting the running lotus-vibe-server for the well-known one.
     // Unset in production, where the addon and the server must agree on the name.
     if (const char* ns = std::getenv("LOTUS_SOCKET_NAMESPACE"); ns != nullptr && *ns != '\0') {
         path += '-';

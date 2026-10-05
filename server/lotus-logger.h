@@ -7,11 +7,11 @@
 
 /**
  * @file lotus-logger.h
- * @brief Thin syslog() wrapper for fcitx5-lotus-server.
+ * @brief Thin syslog() wrapper for lotus-vibe-server.
  *
  * Messages go to the local syslog daemon (journald/rsyslog), which adds
  * timestamps and rotates the log.  Facility: LOG_DAEMON, ident:
- * "fcitx5-lotus-server".
+ * "lotus-vibe-server".
  */
 
 #ifndef _LOTUS_LOGGER_H_

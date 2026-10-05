@@ -1,27 +1,27 @@
-add_library(lotus MODULE lotus.cpp ${fcitx_lotus_core_sources})
-set_target_properties(lotus PROPERTIES OUTPUT_NAME "lotus")
-set_target_properties(lotus PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_options(lotus PRIVATE "-Wl,-exclude-libs,ALL")
-target_link_libraries(lotus
+add_library(lotus-vibe MODULE lotus.cpp ${fcitx_lotus_core_sources})
+set_target_properties(lotus-vibe PROPERTIES OUTPUT_NAME "lotus-vibe")
+set_target_properties(lotus-vibe PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_link_options(lotus-vibe PRIVATE "-Wl,-exclude-libs,ALL")
+target_link_libraries(lotus-vibe
 	Fcitx5::Core
 	Fcitx5::Config
-  Fcitx5::Module::Emoji
+	Fcitx5::Module::Emoji
 	Bamboo::Core
 	Pthread::Pthread
 )
 
-target_include_directories(lotus PRIVATE
+target_include_directories(lotus-vibe PRIVATE
     ${PROJECT_BINARY_DIR}
 )
-target_compile_definitions(lotus PRIVATE
-    FCITX5_LOTUS_SETTINGS_PATH=\"${CMAKE_INSTALL_FULL_BINDIR}/fcitx5-lotus-settings\"
-    FCITX5_LOTUS_SERVER_PATH=\"${CMAKE_INSTALL_FULL_BINDIR}/fcitx5-lotus-server\"
+target_compile_definitions(lotus-vibe PRIVATE
+    FCITX5_LOTUS_SETTINGS_PATH=\"${CMAKE_INSTALL_FULL_BINDIR}/fcitx5-lotus-vibe-settings\"
+    FCITX5_LOTUS_SERVER_PATH=\"${CMAKE_INSTALL_FULL_BINDIR}/lotus-vibe-server\"
     FCITX_LOTUS_ICON_DIR=\"${CMAKE_INSTALL_FULL_DATADIR}/icons/hicolor/scalable/apps\"
 )
-install(TARGETS lotus DESTINATION "${CMAKE_INSTALL_LIBDIR}/fcitx5")
+install(TARGETS lotus-vibe DESTINATION "${CMAKE_INSTALL_LIBDIR}/fcitx5")
 
-fcitx5_translate_desktop_file(lotus.conf.in lotus.conf)
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/lotus.conf" DESTINATION "${CMAKE_INSTALL_DATADIR}/fcitx5/inputmethod")
+fcitx5_translate_desktop_file(lotus-vibe.conf.in lotus-vibe.conf)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/lotus-vibe.conf" DESTINATION "${CMAKE_INSTALL_DATADIR}/fcitx5/inputmethod")
 configure_file(lotus-addon.conf.in.in lotus-addon.conf.in)
 fcitx5_translate_desktop_file("${CMAKE_CURRENT_BINARY_DIR}/lotus-addon.conf.in" lotus-addon.conf)
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/lotus-addon.conf" RENAME lotus.conf DESTINATION "${FCITX_INSTALL_PKGDATADIR}/addon")
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/lotus-addon.conf" RENAME lotus-vibe.conf DESTINATION "${FCITX_INSTALL_PKGDATADIR}/addon")

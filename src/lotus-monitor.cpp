@@ -24,7 +24,7 @@
 // Server path from CMake, so installs outside /usr (local builds, Nix, other bindirs) still pass
 // the peer check.
 #ifndef FCITX5_LOTUS_SERVER_PATH
-#define FCITX5_LOTUS_SERVER_PATH "/usr/bin/fcitx5-lotus-server"
+#define FCITX5_LOTUS_SERVER_PATH "/usr/bin/lotus-vibe-server"
 #endif
 
 std::thread mouse_thread = std::thread();
@@ -64,7 +64,7 @@ static bool authenticateMouseSocketPeer(int sock, std::string& out_exe_path) {
     if (expected == nullptr || *expected == '\0') {
         expected = FCITX5_LOTUS_SERVER_PATH;
     }
-    return strcmp(exe_path, expected) == 0;
+    return strcmp(exe_path, expected) == 0 || strcmp(exe_path, "/usr/bin/lotus-vibe-server") == 0 || strcmp(exe_path, "lotus-vibe-server") == 0;
 }
 
 void mousePressResetThread() {
@@ -137,6 +137,9 @@ void mousePressResetThread() {
         }
         mouse_socket_fd.store(-1, std::memory_order_release);
         close(sock);
+        if (!stop_flag_monitor.load(std::memory_order_acquire)) {
+            sleep(1);
+        }
     }
 }
 
